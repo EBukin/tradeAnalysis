@@ -56,19 +56,56 @@ shinyServer(function(input, output) {
   
   data <- 
     reactive({
+      period <- as.character(input$periodicity)
+      merchant <- as.character(input$merchandize)
+      codingSystem <- as.character(input$system)
       years <- seq(input$yearsRange[1], input$yearsRange[2], 1)
+      countries <- as.character(input$countries)
+      months <- NA
+      if(any(is.null(countries))) {countries <- "ALL"}
+      
+      # Data filtering
+      data <- 
+        ctAval %>% 
+        filter(freq == period,
+               type == merchant,
+               px == codingSystem,
+               Year %in% years)
+      
+      if(period != "ANNUAL") {
+        months <- seq(input$monthRange[1], input$monthRange[2], 1)
+        data <- data %>% filter(Month %in% months)
+      } 
+      
+      if("FSR" %in% countries) {
+        countries <- c(countries[!countries %in% "FSR"], 
+                       51, 31, 112, 268, 398, 417, 498, 643, 762, 795, 804, 860)
+      }
+      
+      if(any(countries != "ALL")) {
+        data <- data %>% filter(r %in% as.character(countries))
+      } else {
+        data <- data
+      }
+      
+      # Reshaping results 
+      data <-
+        data %>% 
+        select(r, ps) %>% 
+        mutate(Value = "X") %>% 
+        spread(ps, Value)
+      
+      # Returning the results
+      list(data = data, 
+           filters = list(period = period,
+                          merchant = merchant,
+                          codingSystem = codingSystem,
+                          years = years,
+                          months = months,
+                          countries = countries))
       })
-   
-  output$distPlot <- renderText({
-    data() 
-    # generate bins based on input$bins from ui.R
-    # x    <- faithful[, 2]
-    # bins <- seq(min(x), max(x), length.out = input$bins + 1)
-    # 
-    # # draw the histogram with the specified number of bins
-    # hist(x, breaks = bins, col = 'darkgray', border = 'white')
-    
-    
-  })
+  
+  output$table <- renderTable({data()$data})
+  output$filters <- renderPrint({data()$filters})
   
 })
