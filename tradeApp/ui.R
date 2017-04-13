@@ -30,14 +30,19 @@ shinyUI(fluidPage(
     sidebarPanel(
       uiOutput("uiCountries"),
       uiOutput("uiPeriodicity"),
+      uiOutput("uiMerchant"),
       uiOutput("uiCoding"),
-      uiOutput("uiYear")
+      uiOutput("uiYear")#,
+      #actionButton(inputId = "updtCT", label = "Update COMTRADE")
     ),
     
     # Show a plot of the generated distribution
     mainPanel(# plotOutput("distPlot")
       tabsetPanel(
-        tabPanel("Table", tableOutput("table")),
+        tabPanel("Table", 
+                 tableOutput("table"),
+                 downloadButton('downloadData', 'Download'),
+                 br()),
         tabPanel("Filters", verbatimTextOutput("filters"))
         
       ))
