@@ -8,6 +8,10 @@
 #
 
 library(shiny)
+library(plyr)
+library(dplyr)
+# devtools::install_github("EBukin/tradeAnalysis", ref = "pack")
+library(tradeAnalysis)
 
 
 # Define UI for application that draws a histogram
@@ -18,23 +22,39 @@ shinyUI(fluidPage(
   # Sidebar with a slider input for number of bins
   sidebarLayout(
     sidebarPanel(
-      selectInput("periodicity", "Periodicity:", c("ANNUAL", "MONTHLY"), selected = "ANNUAL"),
-      uiOutput("uiCountries"),
-      uiOutput("uiYear"),
-      # checkboxInput("HS2", "HS 2 digits", TRUE, width = NULL),
-      checkboxGroupInput("HSdigits", "Number of HS digits", 
-                         choices = c("2-digits" = 2L,  
-                                     "4-digits" = 4L, 
-                                     "6-digits" = 6L), 
-                         selected = c(2L, 4L, 6L), inline = TRUE)
-      #actionButton(inputId = "updtCT", label = "Update COMTRADE")
+      radioButtons("periodicity", "Periodicity", c("ANNUAL", "MONTHLY"), selected = "ANNUAL", inline = TRUE),
+      selectInput("reporters","Reporter", 
+                  setNames(tradeAnalysis::getFSR()$Partner.Code, tradeAnalysis::getFSR()$Partner),
+                  selectize = TRUE, multiple = FALSE,  selected =  c(804) ),
+      sliderInput("yearsRange", label = "Years range", min = 2000, max = 2020, value = c(2010, 2017), step = 1L),
+      radioButtons("dataType", "Variable", c("Trade value" = "Trade.Value..US..", "Quantity kg" = "Netweight..kg."), selected = "Trade.Value..US..", inline = TRUE),
+      numericInput("NPartners", label = "Number of top partners to show", value = 5),
+      numericInput("NPeriods", label = "Number of periods used for top partners", value = 3),
+      checkboxInput("oneEUCB", "Use EU as one region", value = TRUE),
+      checkboxInput("oneFSRCB", "Use FSR as one region"),
+      checkboxInput("oneRUSCB", "Show Russia separately", value = TRUE)
     ),
     
     # Show actions in the tabs
     mainPanel(# plotOutput("distPlot")
       tabsetPanel(
-        tabPanel("Table",
-                 tableOutput("table")),
+        tabPanel("Top partners",
+                 radioButtons("PartnersHSTypes", 
+                              "Types of HS codes to present",
+                              choices = c("WTO AgriFood" = "Aggs",
+                                          "Main components of WTO AgriFood" = "MainAgFood",
+                                          "Relevant to WTO AgriFood 2-6 digits codes" = "RelevantAgFood",
+                                          "All available" = "All"),
+                              selected = c("Aggs"), inline = TRUE),
+                 uiOutput("PartnersHSList"),
+                 h3("Trade balance"),
+                 plotOutput("PartnersTB"),
+                 h3("Import"),
+                 plotly::plotlyOutput("PrtnersImportPlot"),
+                 h3("Export"),
+                 plotly::plotlyOutput("PrtnersExportPlot")),
+        tabPanel("Data table",
+                 DT::dataTableOutput("PartnersHSTable")),
         tabPanel("Filters", verbatimTextOutput("filters"))
         
       ))
