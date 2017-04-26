@@ -16,41 +16,32 @@ devtools::install_github("EBukin/tradeAnalysis", ref = "pack")
 library(tradeAnalysis)
 
 # Loading data
-load("availability.rdata")
+
+# load("tradeDataExplorer/ctAnFSR.Rdata")
+# load("tradeDataExplorer/ctMonFSR.Rdata")
+
+
 
 # Define server logic required to draw a histogram
 shinyServer(function(input, output) {
   
-  # Update data availability
-  # observeEvent(input$updtCT, {
-  #   ctAval <-
-  #     jsonlite::fromJSON("http://comtrade.un.org/api/refs/da/bulk?parameters") %>%
-  #     tbl_df() %>%
-  #     mutate(
-  #       Year = as.integer(str_sub(ps, 1, 4)),
-  #       Month = as.integer(ifelse(str_length(ps) > 4, str_sub(ps, 5, 6), NA)),
-  #       ps = str_c(str_sub(ps, 1, 4), "-", str_sub(ps, 5, 6))
-  #     )
-  #   save(ctAval, file = "availability.rdata")
-  #   load("availability.rdata")
-  #   
-  #   # Selecting full list of countries
-  #   countriesFilter <-
-  #     ctAval %>% 
-  #     select(r) %>% 
-  #     distinct() %>% 
-  #     join_lables() %>% 
-  #     filter(!is.na(r), !is.na(Reporter)) %>% 
-  #     arrange(Reporter)
-  #   countriesFilter <-
-  #     setNames(countriesFilter$r, countriesFilter$Reporter)
-  #   
-  # })
+  df <- 
+    reactive({
+    if (input$periodicity == "MONTHLY") {
+      load("ctMonFSR.Rdata")
+    } else {
+      load("ctAnFSR.Rdata")
+    }
+    ctdata
+  })
+  
+  ct <- df()
+  browser()
   
   # Selecting full list of countries
   countriesFilter <-
-    ctAval %>% 
-    select(r) %>% 
+    ct %>% 
+    select(Reporter.Code) %>% 
     distinct() %>% 
     join_lables() %>% 
     filter(!is.na(r), !is.na(Reporter)) %>% 
