@@ -78,8 +78,10 @@ wtoAnAllAgg <-
 # Filtering only one commodity
 AgFood <-
   wtoAnAllAgg %>% 
-  filter(Commodity.Code %in% c("WTO_AgriFood", "TOTAL"))%>% 
+  # filter(Commodity.Code %in% c("WTO_AgriFood", "TOTAL"))%>% 
   select(-Commodity)
+
+# 4,587,579 × 12
 
 # Returning by income trade data -----------
 # AgFood %>% 
@@ -98,15 +100,18 @@ df <-
     agg_regions(AgFood, RegionsType = "Development"),
     agg_regions(AgFood, RegionsType = "LDC"),
     agg_regions(AgFood, RegionsType = "World"),
-    agg_regions(AgFood, RegionsType = "WTO"))   %>% 
+    agg_regions(AgFood, RegionsType = "WTO")) %>% 
   mutate(Type = "Current USD") %>% 
   bind_rows(realUSD(.)) %>% 
-  spread(Commodity.Code, Value) %>% 
-  mutate(Share_WTO_in_TOTAL = WTO_AgriFood / TOTAL) %>% 
-  gather(Commodity.Code, Value, TOTAL, WTO_AgriFood, Share_WTO_in_TOTAL) %>% 
   mutate(Year = as.character(Year),
          Period = as.character(Period)) %>% 
-  bind_rows(period_mean_value(.))
+  bind_rows(period_mean_value(.)) %>% 
+  join_lables()
+  # spread(Commodity.Code, Value) %>% 
+  # mutate(Share_WTO_in_TOTAL = WTO_AgriFood / TOTAL) %>% 
+  # gather(Commodity.Code, Value, TOTAL, WTO_AgriFood, Share_WTO_in_TOTAL) 
+
+save(df, file = "policyBrief/appDF.RData")
 
 # Writing data for the EXCEL app -----------------
 df %>% write.csv("policyBrief/tradeByRegions.csv", row.names = FALSE, na = "0")
