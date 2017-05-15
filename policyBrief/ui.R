@@ -20,14 +20,13 @@ shinyUI(
           selectInput("varType", "Variable:", choices = NULL),
           sliderInput("yearsRange", label = "Years range", min = 1995, max = 2016, value = c(2010, 2016), step = 1L),
           selectInput("reporters", "Reporter", choices = NULL, selectize = TRUE, multiple = FALSE),
-          numericInput("NPartners", label = "N top partners", value = 5, width = "100%"),
-          numericInput("NPeriods", label = "N periods for top partners", value = 3, width = "100%"),
-          checkboxInput("oneEUCB", "EU as one region", value = TRUE),
-          checkboxInput("oneFSRCB", "FSR as one region"),
-          checkboxInput("oneRUSCB", "Russia separately")#,
+          selectInput("partners", "Partner", choices = NULL, selectize = TRUE, multiple = FALSE)
+          # numericInput("NPartners", label = "N top partners", value = 5, width = "100%"),
+          # numericInput("NPeriods", label = "N periods for top partners", value = 3, width = "100%"),
+          # checkboxInput("oneEUCB", "EU as one region", value = TRUE),
+          # checkboxInput("oneFSRCB", "FSR as one region"),
+          # checkboxInput("oneRUSCB", "Russia separately")#,
           # selectInput("reporters", "Reporter", setNames(tradeAnalysis::getFSR()$Partner.Code, tradeAnalysis::getFSR()$Partner), selectize = TRUE, multiple = FALSE,  selected =  c(804) )
-          
-          
           
           ),
         # Show actions in the tabs
@@ -36,7 +35,7 @@ shinyUI(
             "Top partners",
             fluidPage(
             fluidRow(
-              column(3, selectInput("comGroup", "Commodity group:", choices = NULL)),
+              column(3, selectInput("comGroup", "Group:", choices = NULL)),
               column(9, selectInput("comCode", "Commodity:", choices = NULL, multiple = TRUE, selectize = TRUE, width = "100%"))
               ),
             
@@ -54,7 +53,7 @@ shinyUI(
             # ),
             uiOutput("PartnersHSList"),
             h3("Trade balance"),
-            # plotOutput("PartnersTB"),
+            plotOutput("PartnersTB"),
             h3("Import"),
             # plotly::plotlyOutput("PrtnersImportPlot"),
             h3("Export")#,

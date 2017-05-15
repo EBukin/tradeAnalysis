@@ -66,41 +66,58 @@ shinyServer(
           .$Variable
         repsList <- 
           data %>%
-          select(Region, Reporter.Code) %>% 
+          select(Region, Reporter, Reporter.Code) %>% 
           distinct() %>% 
-          dlply(.,.(Region), function(x) {x$Reporter.Code})
+          mutate(Reporter = ifelse(is.na(Reporter), Reporter.Code, Reporter)) %>% 
+          dlply(., .(Region), function(x) {setNames(x$Reporter.Code, x$Reporter)})
         list(reporters = repsList,
              varType = vars)
       })
+    
+    # Returnb partners list
+    dataPartners <-
+      reactive({
+ 
+        year <- as.integer(input$yearsRange[1]):as.integer(input$yearsRange[2])
+        area <- input$reporters
+        
+        data <- df
+        
+        if (!is.null(area)) {
+          data <-
+            data %>%
+            filter(Reporter.Code %in% area)
+        }
+        
 
+        if (all(!is.null(year))) {
+          data <-
+            data %>%
+            filter(Year %in% year)
+        }
+        vars <- 
+          data %>% 
+          select(Partner.Code, Partner) 
+        list(data = data, partners = setNames(vars$Partner.Code, vars$Partner))
+      })
+    
     # Filtering data depends on the commodity group choice
     dataCommodity <- reactive({
-      if(is.null(input$comGroup)) return()
-      if(is.null(input$varType)) return()
-      if(is.null(input$reporters)) return()
-      if(is.null(input$yearsRange)) return()
-      
+      partnersArea <- input$partners
       data <-
-        df %>% 
-        filter(Group %in% c(input$comGroup))#,
-               # Variable %in% tibble(var = input$varType) %>% separate(var, c("Variable", "Type"), ", ") %>% .$Variable,
-               # Type %in% tibble(var = input$varType) %>% separate(var, c("Variable", "Type"), ", ") %>% .$Type,
-               # Year %in% c(input$yearsRange[1]:input$yearsRange[2]))
-      
+        dataPartners()$data 
       comList <-
         data %>%
         select(Commodity.Code, Commodity) %>%
         distinct() %>%
-        arrange(Commodity) %>% 
+        arrange(Commodity) %>%
         mutate(Commodity = str_trunc(Commodity, 30))
-      
       comList <-
         setNames(comList$Commodity.Code, comList$Commodity)
-      
-      list(data = data,
-           comCodesList = comList)
+      list(comCodesList = comList)
     })
     
+
     observe({
       # Select variable type input (Value - Quantity)
       updateSelectInput(
@@ -108,16 +125,17 @@ shinyServer(
         inputId = "varType",
         choices = dataGlobal()$varType,
         selected = dataGlobal()$varType[1])
-    })
-    observe({
       # Updating a potential choice of reporters
       updateSelectInput(
         session,
         inputId = "reporters",
         choices = dataGlobal()$reporters
       )
-    })
-    observe({
+      updateSelectInput(
+        session,
+        inputId = "partners",
+        choices = dataPartners()$partners
+      )
       # Updating the list of commodities
       updateSelectInput(
         session,
@@ -204,113 +222,102 @@ shinyServer(
   #     )
   #   })
   # 
-  # # Filtering a country selected
+  # Filtering a country selected
   # dfCountryYear <- reactive({
-  #   type <- input$dataType
-  #   area <- as.integer(input$reporters)
+  #   area <- input$reporters
   #   year <- as.integer(input$yearsRange[1]):as.integer(input$yearsRange[2])
-  #   if(is.null(input$PartnersHSList)) return()
-  #   df <- ctdata %>% 
-  #     filter(Commodity.Code %in% input$PartnersHSList)
+  #   df <- dataCommodity()$data
+  #   
   #   if (!is.null(area)) {
-  #     df <- 
+  #     df <-
   #       df %>%
   #       filter(Reporter.Code %in% area)
-  #   } 
+  #   }
+  #   
   #   if (all(!is.null(year))) {
-  #     df <- 
+  #     df <-
   #       df %>%
   #       filter(Year %in% year)
-  #   }     
-  #   if (all(!is.null(type))) {
-  #     df <- 
-  #       df %>%
-  #       filter(Variable %in% type)
-  #   } 
-  #   df %>% 
-  #     dplyr::group_by_(.dots = names(df)[!(names(df) %in% c("Value", "Commodity.Code", "Commodity"))] ) %>% 
-  #     dplyr::summarise(Value = sum(Value)) %>% 
-  #     dplyr::ungroup() 
+  #   }
+  #   
+  #   df #%>%
+  #     # dplyr::group_by_(.dots = names(df)[!(names(df) %in% c("Value", "Commodity.Code", "Commodity"))] ) %>%
+  #     # dplyr::summarise(Value = sum(Value)) %>%
+  #     # dplyr::ungroup()
+  #   
   # })
   
   generatePlots <- 
     reactive({
-      if(is.null(dfCountryYear())) return()
-      # browser()
-      df <- 
-        dfCountryYear() %>%
-        filter(Partner.Code != 0) %>%
-        rank_agg_top_partners(
-          top_n = input$NPartners,
-          agg = TRUE,
-          oneEU = input$oneEUCB,
-          oneFSR = input$oneFSRCB,
-          oneRUS = input$oneRUSCB, 
-          topPeriod = input$NPeriods 
-        )  
-      
-      TradeBalance <- 
-        df %>%
-        plot_tb(
-          stackVar = "Partner",
-          brewScale = T,
-          brewPalName = "Set2",
-          plotTradeBalance = TRUE, 
-          returnData = TRUE
-        ) 
-      import <- 
-        df %>%
-        filter(Trade.Flow.Code == 1) %>%
-        plot_tb(
-          stackVar = "Partner",
-          brewScale = T,
-          brewPalName = "Set2",
-          plotTradeBalance = FALSE, 
-          returnData = FALSE
-        ) 
-      export <- 
-        df %>%
-        filter(Trade.Flow.Code == 2) %>%
-        plot_tb(
-          stackVar = "Partner",
-          brewScale = T,
-          brewPalName = "Set2",
-          plotTradeBalance = FALSE, 
-          returnData = FALSE
-        ) 
+      # if(nrow(dfCountryYear()) == 0) return()
+      if(is.null(input$comGroup)) return()
 
-      list(df = TradeBalance$data, TB = TradeBalance$plot, Imp = import, Exp = export)
+      data <-
+        dataPartners()$data %>%
+        filter(Group %in% c(input$comGroup))
+ 
+      # TradeBalance <- 
+      #   data %>%
+      #   plot_tb(
+      #     stackVar = "Commodity.Code",
+      #     brewScale = T,
+      #     brewPalName = "Set2",
+      #     plotTradeBalance = TRUE, 
+      #     returnData = TRUE
+      #   ) 
+      # import <- 
+      #   data %>%
+      #   filter(Trade.Flow.Code == 1) %>%
+      #   plot_tb(
+      #     stackVar = "Commodity.Code",
+      #     brewScale = T,
+      #     brewPalName = "Set2",
+      #     plotTradeBalance = FALSE, 
+      #     returnData = FALSE
+      #   ) 
+      # export <- 
+      #   data %>%
+      #   filter(Trade.Flow.Code == 2) %>%
+      #   plot_tb(
+      #     stackVar = "Commodity.Code",
+      #     brewScale = T,
+      #     brewPalName = "Set2",
+      #     plotTradeBalance = FALSE, 
+      #     returnData = FALSE
+      #   ) 
+      # 
+      # list(df = TradeBalance$data, TB = TradeBalance$plot, Imp = import, Exp = export)
     })
-  
-  output$PartnersHSTable<-
-    DT::renderDataTable({
-      generatePlots()$df %>% 
-        select(-order) %>% 
-        filter(Trade.Flow != "Trade balance") %>% 
-        arrange(Trade.Flow, Partner) %>% 
-        spread(Period, Value)
-    })
-  
-  
-  output$PrtnersImportPlot <-
-    renderPlotly({
-      generatePlots()$Imp %>% 
-        ggplotly() %>% 
-        print()
-    })
-  
-  output$PrtnersExportPlot <-
-    renderPlotly({
-      generatePlots()$Exp %>% 
-        ggplotly() %>% 
-        print()
-    })
-  
-  
-  output$PartnersTB <- renderPlot({
-    generatePlots()$TB %>% 
-      print
-  })
+  # 
+  # output$PartnersHSTable<-
+  #   DT::renderDataTable({
+  #     generatePlots()$df %>% 
+  #       select(-order) %>% 
+  #       filter(Trade.Flow != "Trade balance") %>% 
+  #       arrange(Trade.Flow, Partner) %>% 
+  #       spread(Period, Value)
+  #   })
+  # 
+  # 
+  # output$PrtnersImportPlot <-
+  #   renderPlotly({
+  #     generatePlots()$Imp %>% 
+  #       ggplotly() %>% 
+  #       print()
+  #   })
+  # 
+  # output$PrtnersExportPlot <-
+  #   renderPlotly({
+  #     generatePlots()$Exp %>% 
+  #       ggplotly() %>% 
+  #       print()
+  #   })
+  # 
+  # 
+  # output$PartnersTB <- renderPlot({
+  #   generatePlots()$TB %>% 
+  #     print
+  # })
   
 
 })
