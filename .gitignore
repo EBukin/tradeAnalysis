@@ -17,6 +17,15 @@
 # Data folders
 /data_raw
 
+# Ignored_data_files
+*ign.csv
+*.pptx
+
+# Old folders
+*/OLD/
+*/old/
+*/Old/
+
 # RStudio files
 .Rproj.user/
 
